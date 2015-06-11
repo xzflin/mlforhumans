@@ -90,8 +90,7 @@
     font: 15px tahoma, sans-serif;
 }
 
-.hovercard {
-    width: 265px;
+#hovercard {
     border: 0;
     border-radius: 2px;
     background-color: white;
@@ -218,6 +217,7 @@
 }
 #prediction_bar {
   padding: 0px 20px 0px 20px;
+  float: left;
 }
 #feedback_text_div {
   overflow-y: scroll;

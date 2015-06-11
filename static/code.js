@@ -17,6 +17,9 @@ var current_train = false;
 var current_feature_brush = [];
 var current_regex = {};
 var saved_regex = []
+var prediction_bars;
+var word_tooltip;
+var classes;
 
 function LoadJson() {
   var xhr = new XMLHttpRequest();
@@ -34,6 +37,7 @@ function LoadJson() {
         test_statistics = json.statistics.test;
         feature_attributes = json.feature_attributes;
         class_names = json.class_names;
+        classes = new Classes(class_names, 17);
         class_names = _.map(class_names, function(i) {
           text = i.replace(".","-");
           return  text.length > 17 ? text.slice(0,14) + "..." : text;
@@ -54,8 +58,8 @@ function LoadJson() {
         top_divs_width = parseInt(d3.select("#explain_text_div").style("width"));
         DrawLegend();
         SetupDatabin();
-        FirstDrawPrediction();
-        FirstDrawTooltip();
+        prediction_bars = new PredictionProbabilities("#prediction_bar", classes, top_divs_width, 225, 17, 90, 5);
+        word_tooltip = new Tooltip("#hovercard", classes, 265, 17, 90, 5, 5, feature_attributes);
         ReSetupDatabin();
 
         SetupStatistics();
@@ -289,226 +293,6 @@ var explain_text_div = d3.select("#explain_text_div");
 var explain_features_div = d3.select("#explain_features_div");
 var height = "50%";
 
-
-/* --------------------------*/
-// Prediction bars
-var svg = d3.select("#prediction_bar")
-svg.attr("width", "235px").attr("height", 225);
-svg.style("float", "left");
-var bar_height = 17;
-var bar_width = 130;
-var bar_x_scale = d3.scale.linear().range([0, bar_width]);
-var bar_space = 5;
-var bar_x = 90;
-var bar_yshift = bar_height + 45;
-function BarY(i) {
-  return (bar_height + bar_space) * i + bar_yshift;
-}
-
-var t_bar_yshift = 60;
-var t_bar_height = 80;
-var t_y = d3.scale.linear().range([t_bar_height,0 ])
-var num_bars;
-var max_bars = 7;
-
-function FirstDrawPrediction() {
-  num_bars = Math.min(class_names.length, max_bars);
-  //bar_width = 30;
-  d = 0
-  var bar = svg.append("g")
-  bar.classed("prediction", true);
-  for (i = 0; i < num_bars; i++) {
-    rect = bar.append("rect");
-    rect.classed("pred_rect", true);
-    rect.attr("x", bar_x)
-        .attr("y", BarY(i))
-        .attr("height", bar_height)
-        .attr("width", 0);
-    bar.append("rect").attr("x", bar_x)
-        .attr("y", BarY(i))
-        .attr("height", bar_height)
-        .attr("width", bar_width - 1)
-        .attr("fill-opacity", 0)
-        .attr("stroke", "black");
-    text = bar.append("text");
-    text.classed("prob-text", true);
-    text.attr("y", BarY(i) + bar_height - 3).attr("fill", "black").style("font", "14px tahoma, sans-serif");
-    //bar.append("text").attr("x", bar_x - 30).attr("y", BarY(i)).style("font", "14px tahoma, sans-serif").attr("fill", "black").text(d);
-    text = bar.append("text");
-    text.classed("class-name", true)
-    text.attr("x", bar_x - 10).attr("y", BarY(i) + bar_height - 3).attr("fill", "black").attr("text-anchor", "end").style("font", "14px tahoma, sans-serif");
-  }
-
-  var true_class = svg.append("g")
-  true_class.classed("true_class", true);
-  true_class.append("circle")
-       .attr("cx", bar_x + bar_height / 2)
-       .attr("cy",  25)
-       .attr("r",  bar_height / 2);
-   true_class.append("text").attr("x", bar_x + bar_height / 2 + 20).attr("y", 30).attr("fill", "black").style("font", "14px tahoma, sans-serif");
-   bar.append("text").attr("x", bar_x - 10).attr("y", 30).attr("text-anchor", "end").attr("fill", "black").style("font", "14px tahoma, sans-serif").text("True Class:");
-   bar.append("text").attr("x", bar_x - 10).attr("y", 50).attr("text-anchor", "end").attr("fill", "black").style("font", "14px tahoma, sans-serif").text("Prediction:");
-}
-
-// Takes in a vector of predict_proba. If there are more than max_bars classes,
-// aggregate the least probable ones into 'other';
-function MapClassesToNameProbsAndColors(predict_proba, n_bars) {
-  if (class_names.length <= n_bars) {
-    return [class_names, predict_proba];
-  }
-  class_dict = _.map(_.range(class_names.length), function (i) {return {'name': class_names[i], 'prob': predict_proba[i], 'i' : i};});
-  sorted = _.sortBy(class_dict, function (d) {return -d.prob});
-  other = new Set();
-  _.forEach(_.range(n_bars - 1, sorted.length), function(d) {other.add(sorted[d].name);});
-  other_prob = 0;
-  ret_probs = [];
-  ret_names = [];
-  for (d = 0 ; d < sorted.length; d++) {
-    if (other.has(sorted[d].name)) {
-      other_prob += sorted[d].prob;
-    }
-    else {
-      ret_probs.push(sorted[d].prob);
-      ret_names.push(sorted[d].name);
-    }
-  };
-  ret_names.push("other");
-  ret_probs.push(other_prob);
-  return [ret_names, ret_probs];
-}
-function UpdatePredictionBar(ex) {
-// Takes in an object that has the following attributes:
-// features -> a list of (feature,weight) pairs.
-// prediction -> a single integer
-// predict_proba -> list of floats, corresponding to the probability of each // class
-  data = ex.predict_proba;
-  mapped = MapClassesToNameProbsAndColors(ex.predict_proba, max_bars)
-  names = mapped[0];
-  data = mapped[1];
-  var pred = svg.selectAll(".prediction")
-  bars = pred.selectAll(".pred_rect").data(data);
-  bars.transition().duration(1000)
-      .attr("width", function(d) { return bar_x_scale(d)})
-      .style("fill", function(d, i) {return class_colors(names[i]);});
-  bar_text = pred.selectAll(".prob-text").data(data);
-  bar_text.transition().duration(1000)
-      .attr("x", function(d) { return bar_x + bar_x_scale(d) + 5;})
-      .attr("fill", "black")
-      .text(function(d) { return d.toFixed(2)});
-  name_object = pred.selectAll(".class-name").data(names)
-  name_object.transition().duration(1000)
-      .text(function(d) {return d;});
-  d = ex.true_class
-  var true_class = svg.selectAll(".true_class")
-  true_class.select("circle").transition().duration(500)
-      .style("fill", class_colors_i(d));
-  true_class.select("text").text(class_names[d]);
-}
-
-
-
-/* --------------------------*/
-// Tooltip
-var tooltip_bars;
-var tooltip_xshift = 10;
-var tooltip = d3.select(".hovercard")
-    .style("opacity", 0)
-    .style("position", "absolute")
-    .style("left", "10px")
-    .style("pointer-events", "none")
-
-function FirstDrawTooltip() {
-  tooltip_bars = Math.min(class_names.length, 5);
-  tooltip.style("height", 90 + bar_height * tooltip_bars);
-  var top_text = tooltip.append("g");
-  var bar = tooltip.append("g").classed("tooltip_bottom", true);
-  for (i = 0; i < tooltip_bars; i++) {
-    rect = bar.append("rect");
-    rect.classed("pred_rect", true);
-    rect.attr("x", bar_x + tooltip_xshift)
-        .attr("y", BarY(i))
-        .attr("height", bar_height)
-        .attr("width", 0);
-    bar.append("rect").attr("x", bar_x + tooltip_xshift)
-        .attr("y", BarY(i))
-        .attr("height", bar_height)
-        .attr("width", bar_width - 1)
-        .attr("fill-opacity", 0)
-        .attr("stroke", "black");
-    text = bar.append("text");
-    text.classed("prob-text", true);
-    text.attr("y", BarY(i) + bar_height - 3).attr("fill", "black").style("font", "14px tahoma, sans-serif");
-    //bar.append("text").attr("x", bar_x - 30).attr("y", BarY(i)).style("font", "14px tahoma, sans-serif").attr("fill", "black").text(d);
-    text = bar.append("text");
-    text.classed("class-name", true)
-    text.attr("x", bar_x - 10 + tooltip_xshift).attr("y", BarY(i) + bar_height - 3).attr("fill", "black").attr("text-anchor", "end").style("font", "14px tahoma, sans-serif");
-  }
-  // This is the word
-  top_text.append("text").attr("id", "focus_feature").attr("x", 10).attr("y",  20).attr("fill", "black").text("Word:");
-  top_text.append("text").attr("id", "frequency").attr("x", 10).attr("y",  35).attr("fill", "black").text("Frequency in train:");
-  bar.append("text").attr("x", 10).attr("y",  50).attr("fill", "black").text("Conditional distribution (train):");
-}
-
-function ShowFeatureTooltip(d) {
-  // Assumes d has d.feature
-        var freq;
-        var prob;
-        var undef = false;
-        if (typeof feature_attributes[d.feature] == 'undefined') {
-          undef = true;
-          ChangeVisibility(tooltip.select(".tooltip_bottom"), false)
-        }
-        else {
-          ChangeVisibility(tooltip.select(".tooltip_bottom"), true)
-
-          freq = feature_attributes[d.feature]['train_freq'];
-          data = feature_attributes[d.feature]['train_distribution'];
-        }
-        tooltip.transition()
-            .delay(1000)
-            .duration(200)
-            .style("opacity", .9);
-        tooltip.style("left", (d3.event.pageX ) + "px")
-            .style("top", (d3.event.pageY - 28) + "px");
-        var word = tooltip.select("#focus_feature")
-        word.text("Word: "+ d.feature);
-        var word = tooltip.select("#frequency")
-        bars = tooltip.selectAll(".pred_rect")
-        bar_text = tooltip.selectAll(".prob-text")
-        name_object = tooltip.selectAll(".class-name")
-        if (undef) {
-          word.text("< 1% in train or not a feature");
-          bars.attr("width", 0)
-          bar_text.attr("x", function(d) { return bar_x +  5 + tooltip_xshift;})
-              .attr("fill", "black")
-              .text("0");
-          name_object.data(class_names.slice(0, tooltip_bars));
-        }
-        else {
-          word.text("Frequency in train: "+ freq.toFixed(2));
-          mapped = MapClassesToNameProbsAndColors(data, tooltip_bars)
-          names = mapped[0];
-          data = mapped[1];
-          bars.data(data);
-          bars.attr("width", function(d) { return bar_x_scale(d)})
-              .style("fill", function(d, i) {return class_colors(names[i]);});
-          bar_text.data(data);
-          bar_text.attr("x", function(d) { return bar_x + bar_x_scale(d) + 5 + tooltip_xshift;})
-              .attr("fill", "black")
-              .text(function(d) { return d.toFixed(2)});
-          name_object.data(names)
-       }
-       name_object.text(function(d) {return d;});
-}
-function HideFeatureTooltip(){
-  tooltip.transition()
-      .duration(300)
-      .style("opacity", 0);
-}
-
-
-
-
 function ToggleFeatureBrush(w) {
   // OOV words are ignored
   if (typeof feature_attributes[w.feature] == 'undefined') {
@@ -592,19 +376,19 @@ function ShowWeights(ex) {
         .attr('text-anchor', 'end')
         .style("fill", function(d) {return FeatureColor(d.feature);})
         .classed("labels", true)
-        .on("mouseover", ShowFeatureTooltip)
-        .on("mouseout", HideFeatureTooltip)
+        .on("mouseover", function(d) { word_tooltip.ShowFeatureTooltip(d);})
+        .on("mouseout", function() {word_tooltip.HideFeatureTooltip();})
         .on("click", function(d) {ToggleFeatureBrushAndRedraw(ex, d)})
         .text(function(d) {return d.feature;});
   labels.exit().remove();
   bars = chart.selectAll('rect').data(data)
   bars.enter().append('rect')
-  bars.on("mouseover", ShowFeatureTooltip)
+  bars.on("mouseover", function(d) { word_tooltip.ShowFeatureTooltip(d);})
+      .on("mouseout", function() {word_tooltip.HideFeatureTooltip();})
       .attr('height',bar_height)
       .attr({'x':0,'y':function(d,i){ return yscale(i)+bar_height; }})
       .attr('width', 0)
       .style('fill',function(d,i){ return class_colors_i(d.class); })
-      .on("mouseout", HideFeatureTooltip)
       .on("click", function(d) {ToggleFeatureBrushAndRedraw(ex, d)});
   bars.transition().duration(1000)
       .attr('width',function(d){ return xscale(d.weight); })
@@ -664,8 +448,8 @@ function ShowExample(ex) {
       })
       .style("font-size", function(d,i) {return size(Math.abs(d.weight))+"px";})
       .style("text-decoration", function(d,i) { return selected_features.has(d.feature) ? "underline" : "none";})
-      .on("mouseover", ShowFeatureTooltip)
-      .on("mouseout", HideFeatureTooltip)
+      .on("mouseover", function(d) { word_tooltip.ShowFeatureTooltip(d);})
+      .on("mouseout", function() {word_tooltip.HideFeatureTooltip();})
       .on("click", function(d) {ToggleFeatureBrushAndRedraw(ex, d)});
 
   // TODO:
@@ -674,7 +458,7 @@ function ShowExample(ex) {
   text.exit().remove();
   current_text = _.map(ex.features, function(x) {return x.feature;}).join(" ")
   d3.select("#textarea_explain").node().value = current_text;
-  UpdatePredictionBar(ex);
+  prediction_bars.UpdatePredictionBars(ex.predict_proba, ex.true_class);
 }
 /* --------------------------*/
 // Databin

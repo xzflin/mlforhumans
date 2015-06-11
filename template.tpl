@@ -6,6 +6,10 @@
     <script type="text/javascript" src="jquery-1.11.3.min.js"></script>
     <script type="text/javascript" src="trip.min.js"></script>
     <script src="intro.js"></script>
+    <script src="classes.js"></script>
+    <script src="horizontal_barplot.js"></script>
+    <script src="prediction_probabilities.js"></script>
+    <script src="tooltip.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="trip.min.css">
 </head>
@@ -78,7 +82,7 @@
 </div>
 <br />
 </div>
-<svg class="hovercard"></svg>
+<svg id="hovercard"></svg>
 
 <div id="ops_container">
 <div id="explain_selections">

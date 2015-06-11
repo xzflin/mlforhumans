@@ -1,6 +1,5 @@
 var train_docs, test_docs, current, size, test_accuracy, previous_text, feature_attributes;
 var train_statistics, test_statistics;
-var explain_sentence = false;
 var class_names;
 // class_colors_i is by index, class_colors is by name
 var class_colors, class_colors_i;
@@ -365,7 +364,6 @@ function GetPredictionAndShowExample(example_text_split, true_class) {
 //xhr.send();
 xhr.send(JSON.stringify({
     features: example_text_split,
-    sentence_explanation: explain_sentence
 }));
 }
 
@@ -524,18 +522,6 @@ function change_to_selection() {
   if (window.getSelection) {
     window.getSelection().removeAllRanges();
   }
-}
-
-function change_explanation() {
-  if (explain_sentence == false) {
-    explain_sentence = true;
-    d3.select("#explain_button").text("Change to word explanation")
-  }
-  else if (explain_sentence == true) {
-    explain_sentence = false;
-    d3.select("#explain_button").text("Change to sentence explanation")
-  }
-  change(null);
 }
 
 var explain_text_div = d3.select("#explain_text_div");

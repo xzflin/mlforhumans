@@ -45,7 +45,6 @@ def GenerateJSON(class_names, train_data, train_vectors, train_labels, test_data
   # train_data and test_data are assumed to be lists of strings
   # train_labels and test_labels are lists of ints
   # classifier is assumed to be a trained classifier
-  # We will fit the vectorizer to the training data
   tokenizer = vectorizer.build_tokenizer()
   output = {}
   output['class_names'] = class_names
@@ -172,6 +171,7 @@ def WordImportance(classifier, example, inverse_vocabulary):
   return imp
 
 def MostImportantWord(classifier, v, class_):
+  # Returns the word w that moves P(Y) - P(Y|NOT w) the most for class Y.
   max_index = 0
   max_change = 0
   orig = classifier.predict_proba(v)[0][class_]
@@ -189,6 +189,7 @@ def MostImportantWord(classifier, v, class_):
   return max_index
 
 def ClassFlippers(classifier, v, class_):
+  # Words that flip the class if removed.
   flippers = []
   orig = classifier.predict_proba(v)[0][class_]
   for i in v.nonzero()[1]:
@@ -235,70 +236,6 @@ def WordImportanceGreedy(classifier, example, vectorizer, inverse_vocabulary):
       imp[inverse_vocabulary[i]]['weight'] = change
       imp[inverse_vocabulary[i]]['class'] = class_
     v[0,i] = 0
-  return imp
-
-# TODO
-def MostImportantSequence(classifier, ex_list, vectorizer, class_):
-  sentences = []
-  current_start = 0
-  current_max = 0
-  current_answer = (-1,-1)
-  previous_val = 0
-  word_val = []
-  for i in range(len(ex_list)):
-    doc = ' '.join(ex_list[current_start:(i+1)])
-    v = vectorizer.transform([doc])
-    val = classifier.predict_proba(v)[0][class_] - 0.05 * (i - current_start)
-    word_val.append(val - previous_val)
-    if classifier.predict(v)[0] != class_ or val < 0:
-      current_start = i + 1
-      current_max = 0
-      previous_val = 0
-      continue
-    if val > current_max:
-      current_answer = (current_start, i+1)
-      current_max = val
-  sentence_importance = collections.defaultdict(lambda: 0.)
-  total = 0
-  for word, val in zip(ex_list[slice(*current_answer)], word_val[slice(*current_answer)]):
-    if val > 0:
-      sentence_importance[word] = val
-      total += val
-  for word in sentence_importance:
-    sentence_importance[word] /= total
-  return current_answer, sentence_importance
-def WordImportanceSentenceGreedy(classifier, example, vectorizer, inverse_vocabulary):
-  # Caution: we assume bag of words, as we re-add the sentences to the end of
-  # the document.
-  orig_v = vectorizer.transform([example])
-  class_ = classifier.predict(orig_v)[0]
-  new_class = class_
-  ex = example.split()
-  sentences = []
-  sentence_importances = []
-  words = set()
-  while new_class == class_ and len(ex) > 0 :
-    best, s_imp = MostImportantSequence(classifier, ex, vectorizer, class_)
-    if best == (-1, -1):
-      break
-    sentences.append(ex[slice(*best)])
-    sentence_importances.append(s_imp)
-    del ex[slice(*best)]
-    v = vectorizer.transform([' '.join(ex)])
-    new_class = classifier.predict(v)[0]
-  v = vectorizer.transform([' '.join(ex)])
-  orig = classifier.predict_proba(v)[0][class_]
-  imp = {}
-  for s, s_imp in zip(sentences, sentence_importances):
-    v = vectorizer.transform([' '.join(ex) + ' '.join(s)])
-    pred = classifier.predict_proba(v)[0][class_]
-    change = pred - orig
-    for word in s_imp:
-      if word not in imp:
-        imp[word] = {}
-        imp[word]['class'] = class_
-        imp[word]['weight'] = 0
-      imp[word]['weight'] += s_imp[word] * change
   return imp
 
 def enable_cors(fn):
@@ -362,12 +299,10 @@ def main():
     @enable_cors
     def predict_fun():
         global train_vectors, train_labels, test_vectors, test_labels, classifier, tokenizer, parsed_train, parsed_test, json_map, class_names, inverse_vocabulary
-        #print request.json
         ret = {}
         ex = ''
         if request.json['features']:
           ex = ' '.join(request.json['features'])
-        sentence_explanation = request.json['sentence_explanation']
         v = vectorizer.transform([ex])
         #print 'Example:', ex
         #print 'Pred:'
@@ -376,10 +311,7 @@ def main():
         print ret['predict_proba']
         ret['prediction'] = classifier.predict(v)[0]
         #ret['feature_weights'] = WordImportance(classifier, v, inverse_vocabulary)
-        if sentence_explanation:
-          ret['feature_weights'] = WordImportanceSentenceGreedy(classifier, ex, vectorizer, inverse_vocabulary)
-        else:
-          ret['feature_weights'] = WordImportanceGreedy(classifier, ex, vectorizer, inverse_vocabulary)
+        ret['feature_weights'] = WordImportanceGreedy(classifier, ex, vectorizer, inverse_vocabulary)
         make_map = lambda x:{'feature':x[0], 'weight' : x[1]['weight'], 'class': x[1]['class']}
         ret['sorted_weights'] = map(make_map, sorted(ret['feature_weights'].iteritems(), key=lambda x:x[1]['weight'], reverse=True))
         return ret
@@ -389,13 +321,11 @@ def main():
         global train_vectors, train_labels, test_vectors, test_labels, classifier, tokenizer, parsed_train, parsed_test, json_map, class_names, inverse_vocabulary
         ret = {}
         ex = ''
-        print request.json
         if request.json['regex']:
           regex = re.sub(r'\\\\', r'\\', request.json['regex'])
         reg = re.compile(regex, re.DOTALL | re.MULTILINE)
         ret['train'] = {}
         for i, doc in enumerate(parsed_train):
-          print i
           iterator = reg.finditer(doc)
           for m in iterator:
             if i not in ret['train']:
@@ -403,7 +333,6 @@ def main():
             ret['train'][i].append(m.span())
         ret['test'] = {}
         for i, doc in enumerate(parsed_test):
-          print i
           iterator = reg.finditer(doc)
           for m in iterator:
             if i not in ret['test']:

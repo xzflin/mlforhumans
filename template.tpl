@@ -5,6 +5,7 @@
     <script type="text/javascript" src="lodash.js"></script>
     <script type="text/javascript" src="jquery-1.11.3.min.js"></script>
     <script type="text/javascript" src="trip.min.js"></script>
+    <script src="intro.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="trip.min.css">
 </head>

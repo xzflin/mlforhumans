@@ -9,7 +9,15 @@ var HorizontalBarplot = function (svg, classes, width, height, bar_height, class
   this.bar_width = this.width - this.bar_x - 33;
   this.x_scale = d3.scale.linear().range([0, this.bar_width]);
   this.bar_yshift = bar_yshift;
+  this.precision = 2;
   this.DrawSkeleton();
+}
+
+HorizontalBarplot.prototype.SetDomainMax = function(domain_max) {
+  this.x_scale.domain([0, domain_max]);
+}
+HorizontalBarplot.prototype.SetPrecision = function(precision_digits) {
+  this.precision = precision_digits;
 }
 // Returns the y position of bar i
 HorizontalBarplot.prototype.BarY = function(i) {
@@ -88,7 +96,7 @@ HorizontalBarplot.prototype.UpdateBars = function(predict_proba, instant) {
   change_obj
       .attr("x", function(d) { return this_object.bar_x + this_object.x_scale(d) + 5;})
       .attr("fill", "black")
-      .text(function(d) { return d.toFixed(2)});
+      .text(function(d) { return d.toFixed(this_object.precision)});
   name_object = pred.selectAll(".class_name").data(names)
   change_obj = instant ? name_object : name_object.transition().duration(1000);
   change_obj.text(function(d) {return d;});

@@ -19,6 +19,7 @@ var current_regex = {};
 var saved_regex = []
 var prediction_bars;
 var word_tooltip;
+var global_statistics;
 var classes;
 
 function LoadJson() {
@@ -60,11 +61,10 @@ function LoadJson() {
         SetupDatabin();
         prediction_bars = new PredictionProbabilities("#prediction_bar", classes, top_divs_width, 225, 17, 90, 5);
         word_tooltip = new Tooltip("#hovercard", classes, 265, 17, 90, 5, 5, feature_attributes);
+        global_statistics = new GlobalStatistics("#statistics_div", ".top_statistics", classes, top_part_height, 285, 17, 90, 5, max_docs);
+        global_statistics.DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix);
+
         ReSetupDatabin();
-
-        SetupStatistics();
-        DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix)
-
         GetPredictionAndShowExample(current_docs[selected_document].features, current_docs[selected_document].true_class);
         ShowFeedbackExample(current_docs[0]);
         ChangeVisibility(d3.selectAll(".top_statistics"), false);
@@ -211,11 +211,11 @@ function RunRegex() {
           test_statistics = json.statistics.test;
           feature_attributes = json.feature_attributes;
           if (current_train) {
-            DrawStatistics("Train", train_statistics, train_statistics.confusion_matrix)
+            global_statistics.DrawStatistics("Train", train_statistics, train_statistics.confusion_matrix)
             current_docs = train;
           }
           else {
-            DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix)
+            global_statistics.DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix)
             current_docs = test_docs;
           }
           current_feature_brush = [];
@@ -723,12 +723,12 @@ function swap_dataset() {
   if(current_train === false) {
     current_train = true;
     current_docs = train_docs;
-    DrawStatistics("Train", train_statistics, train_statistics.confusion_matrix)
+    global_statistics.DrawStatistics("Train", train_statistics, train_statistics.confusion_matrix)
   }
   else {
     current_train = false;
     current_docs = test_docs;
-    DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix)
+    global_statistics.DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix)
   }
   AssignDots(svg_hist, current_docs);
   GetPredictionAndShowExample(current_docs[0].features, current_docs[0].true_class);
@@ -1013,101 +1013,7 @@ function DrawLegend() {
       .style("fill", "none");
 }
 
-/* --------------------------*/
-// Global Statistics
-
-var s_bar_space, s_bar_x, s_bar_yshift, b_height, b_width;
-function SetupStatistics() {
-  b_height = 17;
-  b_width = 130;
-  // 17 is bar height, 5 is space
-  train_height = (b_height + 5) * class_names.length + 80 + 20;
-  var stats_svg = d3.select("#statistics_div").append("svg")
-  stats_svg.attr("width", "255px").attr("height", train_height);
-  stats_svg.style("float", "left").style("padding", "0 px 20 px 0 px 20px");
-  stats_svg.attr("id", "stats_svg")
-
-  s_bar_space = 5;
-  s_bar_x = 110;
-  s_bar_yshift = 80;
-
-  d = 0
-  var bar = stats_svg.append("g")
-  bar.append("text")
-    .attr("x", s_bar_x - 40)
-    .attr("id", "statistics_title")
-    .attr("y", 30)
-    .attr("fill", "black")
-    .style("font", "14px tahoma, sans-serif")
-  bar.append("text").
-    attr("x", s_bar_x - 40)
-    .attr("y", 50)
-    .attr("fill", "black")
-    .style("font", "14px tahoma, sans-serif")
-    .attr("id", "statistics_total");
-  bar.append("text").
-    attr("x", s_bar_x - 40)
-    .attr("y", 70)
-    .attr("fill", "black")
-    .style("font", "14px tahoma, sans-serif")
-    .text("Class Distribution:");
-  function SBarY(i) {
-    return (b_height + s_bar_space) * i + s_bar_yshift;
-  }
-  num_bars = class_names.length;
-  for (i = 0; i < num_bars; i++) {
-    rect = bar.append("rect");
-    //rect.classed("pred_rect", true);
-    rect.attr("x", s_bar_x)
-        .attr("y", SBarY(i))
-        .attr("height", b_height)
-        .style("fill",class_colors_i(i))
-        .classed("statistics_rects", true);
-    text = bar.append("text");
-    text.attr("y", SBarY(i) + b_height - 3)
-        .attr("fill", "black")
-        .style("font", "14px tahoma, sans-serif")
-        .classed("statistics_texts", true);
-    text = bar.append("text");
-    text.attr("x", s_bar_x - 10)
-        .attr("y", SBarY(i) + b_height - 3)
-        .attr("fill", "black")
-        .attr("text-anchor", "end")
-        .style("font", "14px tahoma, sans-serif")
-        .text(class_names[i]);
-    bar.append("rect").attr("x", s_bar_x)
-        .attr("y", SBarY(i))
-        .attr("height", b_height)
-        .attr("width", b_width - 1)
-        .attr("fill-opacity", 0)
-        .attr("stroke", "black");
-  }
-  var cm_svg = d3.select("#statistics_div").append("svg")
-  confusion_matrix = new Matrix(cm_svg, top_part_height);
-}
-function DrawStatistics(title, data, c_matrix) {
-  visible = d3.selectAll(".top_statistics").classed("visible")
-  ChangeVisibility(d3.selectAll(".top_statistics"), true);
-  total = d3.sum(data.class_distribution)
-  var s_bar_x_scale = d3.scale.linear().domain([0, total]).range([0, b_width]);
-
-  d3.select("#statistics_title")
-    .text(title + " accuracy:" + data.accuracy);
-  d3.select("#statistics_total")
-    .text("Number of documents: " + total);
-
-  rect = d3.selectAll(".statistics_rects").data(data.class_distribution)
-  rect.attr("width", function(d) {return s_bar_x_scale(d);});
-  text = d3.selectAll(".statistics_texts").data(data.class_distribution)
-  text.attr("x", function(d) { return s_bar_x + s_bar_x_scale(d) + 5; })
-       .text(function(d) { return d.toFixed(0); })
-
-  confusion_matrix.populateMatrix(c_matrix)
-  ChangeVisibility(d3.selectAll(".top_statistics"), visible);
-}
-
-/* Confusion Matrix */
-
+/* Confusion Matrix brushing */
 var current_brush = [-1, -1];
 function BrushOnMatrix(true_label, predicted_label) {
   docs = [];
@@ -1122,327 +1028,7 @@ function BrushOnMatrix(true_label, predicted_label) {
   BrushExamples(docs);
 }
 
-var LABEL_FONT_SIZE = 13;
-var MATRIX_LABEL_FONT_SIZE = 10;
-var MATRIX_FONT_SIZE = 10;
-var FONT_FAMILY = "Helvetica";
-var MOUSEOVER = 'rgb(150, 150, 150)';
-var FONT_COLOR = 'rgb(160, 160, 160)';
-var FILL = 'rgb(255, 255, 255)';
-var STROKE_SIZE = 1;
-var BUTTON_Y = 10;
-var BUTTON_SIZE = 15;
-function Matrix(svg_object, height) {
-  var defaultMouseover = MOUSEOVER;
-  var defaultRegular = FILL;
-  this.numClasses = class_names.length;
-  //this.width = 350;
-  this.strokeSize = STROKE_SIZE;
-  this.tickSize = 10;
-  this.width = (height - this.strokeSize * 2) / (1.2 + 2/(3 * this.numClasses));
-  temp = svg_object.append("text").classed("matrix-text", true).text(max_docs)
-  min_class_width = temp.node().getComputedTextLength() + 5;
-  temp.classed("axis_label", true).classed("matrix-text", false).text("Actual label");
-  this.axisLabelContainerSize = temp.node().getBBox().height
-  this.labelContainerSize = this.tickSize;
-  this.width = Math.max(min_class_width * this.numClasses, this.width);
-  temp.remove();
-  var size = this.width / this.numClasses;
-  this.footerContainerSize = this.width / 5;
-  this.cellSize = size;
-  this.id = "matrix";
-  //this.mouseoverColor = defaultMouseover;
-  //this.cellColor = defaultRegular;
-  this.svgContainerSize = (this.cellSize * this.numClasses) + this.strokeSize * 2 + this.labelContainerSize + this.axisLabelContainerSize;
-  //console.log("Height: " + height + " new: " + (this.svgContainerSize + this.footerContainerSize));
-  this.svg = svg_object
-        .attr("class", "confusion_matrix")
-        .attr("width", this.svgContainerSize)
-        .attr("height", this.svgContainerSize + this.footerContainerSize)
-        .attr("id", this.id)
-        .attr("value", "modelname");
-
-  this.labelNames = class_names;
-  this.cells = new Array();
-  this.correspondingModel = "model";
-  this.round2 = d3.format(".2f");
-  this.bucketLists = [];
-  appendAxisLabels(this);
-  //  // append the positive, neutral, negative labels to the matrix
-  appendLabels(this, class_names);
-
-  var x = 0;
-  var y = 0;
-  var matrixPointer = this;
-  var count = 0;
-  this.ids = [];
-  mouseover = false;
-  for (var i = 0; i < class_names.length; i++) {
-    var x = 0;
-    var y = i * this.cellSize;
-    for (var j = 0; j < class_names.length; j++) {
-      var id = this.id + '-' + class_names[i] + '-' + class_names[j];
-      var z = [i, j];
-      this.ids.push(id);
-      var g = this.svg.append("g")
-            .attr("id", id)
-            .attr("width", size)
-            .attr("height", size)
-            //.attr("style", "stroke-width:" + this.strokeSize + "px")
-            .attr("class", "matrix-bucket")
-            .datum([i,j])
-            .on("click", function(d) {
-              BrushOnMatrix(d[0], d[1]);
-            })
-            .style("fill", FILL);
-
-      if (mouseover) {
-        g.on("mouseover", function() {
-            d3.select(this)
-              .style('fill', defaultMouseover);
-              //.style('stroke-width', this.strokeSize + "px");
-          })
-          .on("mouseout", function() {
-            d3.select(this)
-              .style('fill', defaultRegular);
-              //.style('stroke-width', this.strokeSize + "px");
-          })
-      }
-
-      var rect = g.append("rect")
-            .attr("x", x + this.strokeSize + this.labelContainerSize + this.axisLabelContainerSize)
-              .attr("y", y + this.strokeSize + this.labelContainerSize + this.axisLabelContainerSize)
-              .attr("id", this.id + '-' + class_names[i] + '-' + class_names[j] + "-cell")
-              .attr("class", "matrix-cell")
-              .attr("width", size - this.strokeSize)
-              .attr("height", size - this.strokeSize);              
-
-      var textElement = g.append("text")
-                .attr("id", this.id + '-' + class_names[i] + '-' + class_names[j] + "-text")
-                .attr("class", "matrix-text")
-                .attr("stroke-width", 0)
-                .attr("font-family", FONT_FAMILY)
-                .attr("font-size", MATRIX_FONT_SIZE + "pt");
-
-      var pixelLength = textElement[0][0].getComputedTextLength();
-      textElement.attr("y", this.cellSize / 2 + y)
-          .attr("x", x + this.cellSize / 2 - pixelLength / 2)
-          .style("fill", "rgb(97,97,97)");
-
-      this.cells[count] = g;
-      count++;
-      x += this.cellSize;
-    }
-  }
-  
-}
-function appendAxisLabels(matrix) {
-  // predicted label
-  var axisLabelSize = matrix.axisLabelContainerSize;
-  var labelContainerSize = matrix.labelContainerSize;
-  matrix.svg.append("text")
-    .text("Predicted Label")
-    .attr("x", function () {
-      var pixelLength = this.getComputedTextLength()
-      // +10 is for the yshift 10.
-      return axisLabelSize + labelContainerSize + matrix.width / 2 - pixelLength / 2 + 10;
-    })
-    .attr("class", "axis_label")
-    .attr("y", 10)
-    .attr("id", matrix.id + '-' + 'horizontal-title')
-    .style("fill", FONT_COLOR)
-    .style("font-size", LABEL_FONT_SIZE);
-
-  matrix.svg.append("text")
-    .text("Actual Label")
-    .attr("x", function() {
-      var pixelLength = this.getComputedTextLength();
-      return - axisLabelSize - labelContainerSize - matrix.width / 2 - pixelLength / 2 + 10;
-    })
-    .attr("y", 10)
-    .attr("id", matrix.id + '-' + 'vertical-title')
-        .attr("class", "axis_label")
-    .style("fill", FONT_COLOR)
-    .style("font-size", LABEL_FONT_SIZE)
-    .attr("transform", "rotate(270)");
-}
-
-function appendLabels(matrix, labels) {
-  // create labels
-  var offset = 0;
-  var size = matrix.cellSize;
-  var axisLabelSize = matrix.axisLabelContainerSize;
-  var labelContainerSize = matrix.labelContainerSize;
-  var tickSize = matrix.tickSize;
-  for (var i = 0; i < labels.length; i++) {
-    matrix.svg.append("rect")
-      .attr("x", function () {
-        return labelContainerSize + axisLabelSize + (size / 2) + (size * i) - tickSize / 2; 
-      })
-      .attr("y", offset + axisLabelSize)
-      .attr("width", tickSize)
-      .attr("height", tickSize)
-      .attr("id", matrix.id + '-' + labels[i] + '-predicted-label')
-      .style("fill", class_colors_i(i))
-
-    // create labels
-    matrix.svg.append("rect")
-      .attr("transform", "rotate(270)") 
-      .attr("x", function() {
-        return -labelContainerSize - axisLabelSize - (size / 2) - (size * i) - tickSize / 2;
-      })
-      .attr("y", offset + axisLabelSize)
-      .attr("id", matrix.id + '-' + labels[i] + "-actual-label")
-      .attr("width", tickSize)
-      .attr("height", tickSize)
-      .style("fill", class_colors_i(i));
-  }
-
-}
-Matrix.prototype.getMatrixIds = function() {
-  return this.ids;
-}
-Matrix.prototype.setTextForCell = function(text, id) {
-  var newText = d3.select("#" + id + "-text").text(text);
-  var cell = d3.select("#" + id + "-cell");
-
-  var pixelHeight = newText.node().getBBox().height;
-  var pixelLength = newText.node().getBBox().width;
-
-  var currentX = parseInt(cell[0][0].attributes.x.value);
-  var currentY = parseInt(cell[0][0].attributes.y.value);
-  
-  newText.attr("y", this.cellSize / 2  + currentY + pixelHeight / 4)
-    .attr("x", currentX + this.cellSize / 2 - pixelLength / 2);
-}
-
-Matrix.prototype.setStrokeColor = function(r, g, b) {
-  var rgb = "rgb(" + r + ", " + g + ", " + b + ")";
-
-  var cells = this.cells;
-  for (var i = 0; i < cells.length; i++) {
-    cells[i].style("stroke", rgb);
-  }
-}
-
-Matrix.prototype.setCellMouseoverColor = function(r, g, b, id) {
-  var rgb = "rgb(" + r + ", " + g + ", " + b + ")";
-  
-  if (typeof(id) === 'undefined') {
-    this.mouseoverColor = rgb;
-    var cells = this.cells;
-    for (var i = 0; i < cells.length; i++) {
-      cells[i].on("mouseover", function() {
-          d3.select(this)
-            .style('fill', rgb)
-      });
-    }
-  } else {
-    d3.select("#" + id)
-      .on("mouseover", function() {
-          d3.select(this)
-            .style('fill', rgb)
-      });
-  }
-}
-
-Matrix.prototype.setCellFillColor = function(color, id) {
-  var rgb = color;
-  
-  if (typeof(id) === 'undefined') {
-    this.cellColor = rgb;
-    var cells = this.cells;
-    for (var i = 0; i < cells.length; i++) {
-      cells[i].style("fill", rgb)
-      .on("mouseout", function() {
-          d3.select(this)
-            .style('fill', rgb)
-      });
-    }
-  } else {
-    if (d3.rgb(color).hsl().l < .58) {
-                        //light text
-      this.setFontColor(230, 230, 230, id);
-    }
-                else this.setFontColor(97,97,97,id);
-    d3.select("#" + id)
-      .style("fill",rgb)
-      .on("mouseout", function() {
-          d3.select(this)
-            .style('fill', rgb)
-      });
-  }
-}
-
-Matrix.prototype.setContainerId = function(id) {
-  d3.select(this)
-    .attr("id", id);
-}
-Matrix.prototype.setFontFamily = function(family) {
-  d3.selectAll("text").style("font-family", family);
-}
-
-Matrix.prototype.setFontColor = function(r, g, b, id) {
-  var rgb = "rgb(" + r + ", " + g + ", " + b + ")";
-  if (typeof(id) === 'undefined') {
-    d3.selectAll("text").style("fill", rgb);
-  } else {
-    d3.select("#" + id + "-text")
-      .style('fill', rgb);
-  }
-}
-
-Matrix.prototype.setStrokeWidth = function(width) {
-  this.strokeSize = width;
-  this.svgContainerSize = (this.cellSize * 3) + this.strokeSize * 2;
-  this.svg.attr("width", this.svgContainerSize)
-      .attr("height", this.svgContainerSize);
-
-  var x = 0;
-  var y = 0;
-  var strokeSize = this.strokeSize;
-  for (var i = 0; i < this.cells.length; i++) {
-    var cell = this.cells[i];
-    cell.attr("style", "stroke-width:" + width + "px")
-      .attr("x", x + strokeSize)
-      .attr("y", y + strokeSize)
-      .style("stroke-width", strokeSize + "px");
-
-    x += this.cellSize;
-      if ((i + 1) % 3 == 0) {
-        x = 0;
-        y += this.cellSize;
-      }
-  }
-}
-
-Matrix.prototype.setFootnote = function(text) {
-  var containerSize, width;
-  containerSize = this.labelContainerSize;
-  width = this.width;
-  d3.select("#" + this.id + '-footnote')
-    .text(text)
-                .attr("class", ".footnote")
-    .attr("x", function() {
-      var pixelLength = this.getComputedTextLength();
-      return containerSize * 2 +  width / 2 - pixelLength / 2;
-    });
-}
-
-Matrix.prototype.populateMatrix = function(data) {
-    for (var i = 0; i < this.numClasses; i++) {
-      var row = data[i]
-      var rowsum = d3.sum(row);
-      var colorGreen = d3.scale.linear().domain([0, rowsum]).range(["#E3FAEA", "#0B7A52"]);
-      var colorRed = d3.scale.linear().domain([0, rowsum]).range(["#FAE3E3", "#7A0B0B"]);
-      for (var j = 0; j < this.numClasses; j++) {
-        var bucket = this.numClasses * i + j;
-                      var color = (i == j) ? colorGreen : colorRed;
-        this.setCellFillColor(color(row[j]), this.ids[bucket]); 
-        this.setTextForCell(row[j], this.ids[bucket]); 
-      }
-    }
-}
+/* */
 
 var top_divs_order = {"textarea" : 1, "text": 2, "prediction": 3, "feature_contribution": 3, "brushed_features" : 1};
 top_divs = d3.selectAll(".top_explain").data(["textarea", "text", "prediction", "feature_contribution", "brushed_features"]);
@@ -1493,8 +1079,4 @@ function change_order(changed_select) {
   ChangeVisibility(d3.selectAll(".top_explain").filter(function(d,i) {return visible.has(d);}), true);
   top_divs.sort(function(a,b) { return top_divs_order[a] > top_divs_order[b];});
   //alert("OI" + changed_select);
-}
-
-function switch_change_order(element) {
-
 }

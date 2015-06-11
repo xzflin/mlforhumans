@@ -23,7 +23,6 @@ PredictionProbabilities.prototype.DrawSkeleton = function() {
   true_class.append("text").attr("x", this.bar_x + this.bar_height / 2 + 20).attr("y", 30).attr("fill", "black").style("font", "14px tahoma, sans-serif");
   true_class.append("text").attr("x", this.bar_x - 10).attr("y", 30).attr("text-anchor", "end").attr("fill", "black").style("font", "14px tahoma, sans-serif").text("True Class:");
   true_class.append("text").attr("x", this.bar_x - 10).attr("y", 50).attr("text-anchor", "end").attr("fill", "black").style("font", "14px tahoma, sans-serif").text("Prediction:");
-  this.bars.DrawSkeleton();
 }
 PredictionProbabilities.prototype.UpdatePredictionBars = function(predict_proba, true_class) {
   this.bars.UpdateBars(predict_proba, false);

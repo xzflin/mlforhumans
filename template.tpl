@@ -10,6 +10,8 @@
     <script src="horizontal_barplot.js"></script>
     <script src="prediction_probabilities.js"></script>
     <script src="tooltip.js"></script>
+    <script src="matrix.js"></script>
+    <script src="global_statistics.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="trip.min.css">
 </head>

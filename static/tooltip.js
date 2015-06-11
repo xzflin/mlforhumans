@@ -22,7 +22,6 @@ Tooltip.prototype.DrawSkeleton = function() {
   top_text.append("text").attr("id", "frequency").attr("x", 10).attr("y",  35).attr("fill", "black").text("Frequency in train:");
   var bottom_text = this.svg.append("g").classed("bottom_text", true);
   bottom_text.append("text").attr("x", 10).attr("y",  50).attr("fill", "black").text("Conditional distribution (train):");
-  this.bars.DrawSkeleton();
 }
 
 Tooltip.prototype.ShowFeatureTooltip = function(d) {

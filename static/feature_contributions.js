@@ -44,6 +44,7 @@ FeatureContributions.prototype.ShowExample = function(example) {
         .on("mouseover", function(d) {this_object.word_tooltip.ShowFeatureTooltip(d);})
         .on("mouseout", function() {this_object.word_tooltip.HideFeatureTooltip();})
         .on("click", function(d) {this_object.brushed_features.ToggleFeatureBrush(d.feature)})
+        .style("text-decoration", function(d) { return this_object.brushed_features.IsBrushed(d.feature) ? "underline" : "none";})
         .text(function(d) {return d.feature;});
   labels.exit().remove();
   var bars = this.bars.selectAll('rect').data(data)

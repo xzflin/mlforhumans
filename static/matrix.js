@@ -8,7 +8,7 @@ var FILL = 'rgb(255, 255, 255)';
 var STROKE_SIZE = 1;
 var BUTTON_Y = 10;
 var BUTTON_SIZE = 15;
-function Matrix(svg_object, height, classes, max_docs) {
+function Matrix(svg_object, height, classes, max_docs, databin) {
   var defaultMouseover = MOUSEOVER;
   var defaultRegular = FILL;
   this.numClasses = classes.names.length;
@@ -69,7 +69,7 @@ function Matrix(svg_object, height, classes, max_docs) {
             .attr("class", "matrix-bucket")
             .datum([i,j])
             .on("click", function(d) {
-              BrushOnMatrix(d[0], d[1]);
+              databin.BrushOnMatrix(d[0], d[1]);
             })
             .style("fill", FILL);
 

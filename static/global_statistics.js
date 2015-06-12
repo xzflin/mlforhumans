@@ -1,4 +1,4 @@
-var GlobalStatistics = function (id, class_name, classes, height, barchart_width, bar_height, class_name_width, space_between_bars, max_docs) {
+var GlobalStatistics = function (id, class_name, classes, height, barchart_width, bar_height, class_name_width, space_between_bars, max_docs, databin) {
   this.class_name = class_name;
   this.stats_svg = d3.select(id).append("svg");
   // 80 is stuff on top, 20 TODO
@@ -14,7 +14,7 @@ var GlobalStatistics = function (id, class_name, classes, height, barchart_width
   this.bars.SetPrecision(0);
   this.DrawSkeleton();
   cm_svg = d3.select(id).append("svg")
-  this.confusion_matrix = new Matrix(cm_svg, height, classes, max_docs);
+  this.confusion_matrix = new Matrix(cm_svg, height, classes, max_docs, databin);
 }
 
 GlobalStatistics.prototype.DrawSkeleton = function() {

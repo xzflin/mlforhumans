@@ -1,7 +1,9 @@
-var BrushedFeatures = function (id, feature_attributes) {
+var BrushedFeatures = function (id, feature_attributes, databin) {
   this.div = d3.select(id);
   this.feature_attributes = feature_attributes;
   this.selected_features = new Set();
+  this.databin = databin;
+  this.current_feature_list = []
 }
 BrushedFeatures.prototype.UpdateObjects = function(explained_text, feature_contributions) {
   this.explained_text = explained_text;
@@ -40,13 +42,7 @@ BrushedFeatures.prototype.UpdateBrushes = function(instant) {
     }
   }
   docs = new Set(_.map(docs, function(d) { return +d;}))
-  // TODO
-  if (instant) {
-    InstantBrushExamples(docs);
-  }
-  else {
-    BrushExamples(docs);
-  }
+  this.databin.BrushExamples(docs, instant);
 }
 
 

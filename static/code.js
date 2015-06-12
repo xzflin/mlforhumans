@@ -22,6 +22,7 @@ var word_tooltip;
 var global_statistics;
 var classes;
 var explained_text;
+var feature_contributions;
 
 function LoadJson() {
   var xhr = new XMLHttpRequest();
@@ -66,6 +67,7 @@ function LoadJson() {
         global_statistics = new GlobalStatistics("#statistics_div", ".top_statistics", classes, top_part_height, 285, 17, 90, 5, max_docs);
         global_statistics.DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix);
         explained_text = new ExplainedText("#explain_text_div", classes, f_attributes, selected_features, word_tooltip);
+        feature_contributions = new FeatureContributions("#explain_features_div", top_divs_width, 19, 80, 40, classes, f_attributes, selected_features, word_tooltip);
 
         ReSetupDatabin();
         ChangeVisibility(d3.selectAll(".top_statistics"), false);
@@ -123,7 +125,7 @@ function GetPredictionAndShowExample(example_text_split, true_class) {
           var prediction_object = JSON.parse(xhr.responseText);
           current_object = GenerateObject(example_text_split, true_class, prediction_object);
           ShowExample(current_object);
-          ShowWeights(current_object);
+          // ShowWeights(current_object);
           StopLoading();
           //ChangeVisibility(d3.select("#loading"), false);
       }
@@ -312,14 +314,8 @@ function ToggleFeatureBrush(w) {
 }
 function ToggleFeatureBrushAndRedraw(ex, word) {
   ToggleFeatureBrush(word);
-  ShowExample(ex);
   explained_text.UpdateSelectedFeatures();
-  // explain_text_div.selectAll("span")
-  //     .style("text-decoration", function(d,i) { return selected_features.has(d.feature) ? "underline" : "none";})
-  explain_features_div.select("svg")
-    .selectAll(".labels")
-    .style("text-decoration", function(d) { return selected_features.has(d.feature) ? "underline" : "none";});
-  
+  feature_contributions.UpdateSelectedFeatures();
 }
 
 function ShowWeights(ex) {
@@ -436,6 +432,7 @@ function ShowFeedbackExample(ex) {
 // predict_proba -> list of floats, corresponding to the probability of each // class
 function ShowExample(ex) {
   explained_text.ShowExample(ex);
+  feature_contributions.ShowExample(ex);
   current_text = _.map(ex.features, function(x) {return x.feature;}).join(" ")
   d3.select("#textarea_explain").node().value = current_text;
   prediction_bars.UpdatePredictionBars(ex.predict_proba, ex.true_class);

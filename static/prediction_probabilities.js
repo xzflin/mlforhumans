@@ -25,6 +25,7 @@ PredictionProbabilities.prototype.DrawSkeleton = function() {
   true_class.append("text").attr("x", this.bar_x - 10).attr("y", 50).attr("text-anchor", "end").attr("fill", "black").style("font", "14px tahoma, sans-serif").text("Prediction:");
 }
 PredictionProbabilities.prototype.UpdatePredictionBars = function(predict_proba, true_class) {
+  var this_object = this;
   this.bars.UpdateBars(predict_proba, false);
   var true_class_circle = this.svg.selectAll(".true_class")
   true_class_circle.select("circle").transition().duration(500)

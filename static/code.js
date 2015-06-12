@@ -21,6 +21,7 @@ var prediction_bars;
 var word_tooltip;
 var global_statistics;
 var classes;
+var explained_text;
 
 function LoadJson() {
   var xhr = new XMLHttpRequest();
@@ -37,6 +38,7 @@ function LoadJson() {
         train_statistics = json.statistics.train;
         test_statistics = json.statistics.test;
         feature_attributes = json.feature_attributes;
+        f_attributes = new FeatureAttributes(json.feature_attributes);
         class_names = json.class_names;
         classes = new Classes(class_names, 17);
         class_names = _.map(class_names, function(i) {
@@ -63,14 +65,14 @@ function LoadJson() {
         word_tooltip = new Tooltip("#hovercard", classes, 265, 17, 90, 5, 5, feature_attributes);
         global_statistics = new GlobalStatistics("#statistics_div", ".top_statistics", classes, top_part_height, 285, 17, 90, 5, max_docs);
         global_statistics.DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix);
+        explained_text = new ExplainedText("#explain_text_div", classes, f_attributes, selected_features, word_tooltip);
 
         ReSetupDatabin();
-        GetPredictionAndShowExample(current_docs[selected_document].features, current_docs[selected_document].true_class);
-        ShowFeedbackExample(current_docs[0]);
         ChangeVisibility(d3.selectAll(".top_statistics"), false);
         ChangeVisibility(d3.selectAll(".top_feedback"), false);
         ChangeVisibility(d3.select("#explain_selections"), true);
         change_order(1);
+        ShowFeedbackExample(current_docs[0]);
         GetPredictionAndShowExample(current_docs[selected_document].features, current_docs[selected_document].true_class);
         StopLoading();
         Intro();
@@ -311,8 +313,9 @@ function ToggleFeatureBrush(w) {
 function ToggleFeatureBrushAndRedraw(ex, word) {
   ToggleFeatureBrush(word);
   ShowExample(ex);
-  explain_text_div.selectAll("span")
-      .style("text-decoration", function(d,i) { return selected_features.has(d.feature) ? "underline" : "none";})
+  explained_text.UpdateSelectedFeatures();
+  // explain_text_div.selectAll("span")
+  //     .style("text-decoration", function(d,i) { return selected_features.has(d.feature) ? "underline" : "none";})
   explain_features_div.select("svg")
     .selectAll(".labels")
     .style("text-decoration", function(d) { return selected_features.has(d.feature) ? "underline" : "none";});
@@ -432,30 +435,7 @@ function ShowFeedbackExample(ex) {
 // prediction -> a single integer
 // predict_proba -> list of floats, corresponding to the probability of each // class
 function ShowExample(ex) {
-  var text = explain_text_div.selectAll("span").data(ex.features);
-  text.enter().append("span");
-  text.html(function (d,i) {return d.feature != "\n" ? d.feature + " " : "<br />"; })
-      .style("color", function(d, i) {
-        var w = 20;
-        var color_thresh = 0.02;
-        if (d.weight > color_thresh) {
-          color = class_colors_i(d.class);
-          return color;
-        }
-        else {
-          return FeatureColor(d.feature);
-        }
-      })
-      .style("font-size", function(d,i) {return size(Math.abs(d.weight))+"px";})
-      .style("text-decoration", function(d,i) { return selected_features.has(d.feature) ? "underline" : "none";})
-      .on("mouseover", function(d) { word_tooltip.ShowFeatureTooltip(d);})
-      .on("mouseout", function() {word_tooltip.HideFeatureTooltip();})
-      .on("click", function(d) {ToggleFeatureBrushAndRedraw(ex, d)});
-
-  // TODO:
-  // do the remove first, then the add for smoothness
-  //text.exit().transition().duration(1000).style("opacity", 0).remove();
-  text.exit().remove();
+  explained_text.ShowExample(ex);
   current_text = _.map(ex.features, function(x) {return x.feature;}).join(" ")
   d3.select("#textarea_explain").node().value = current_text;
   prediction_bars.UpdatePredictionBars(ex.predict_proba, ex.true_class);

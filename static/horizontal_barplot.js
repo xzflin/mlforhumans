@@ -56,7 +56,7 @@ HorizontalBarplot.prototype.DrawSkeleton = function() {
   }
 }
 HorizontalBarplot.prototype.MapClassesToNameProbsAndColors = function(predict_proba) {
-  this_object = this;
+  var this_object = this;
   if (this.classes.names.length <= this.n_bars) {
     return [this.classes.names, predict_proba];
   }

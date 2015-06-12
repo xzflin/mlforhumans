@@ -12,6 +12,8 @@
     <script src="tooltip.js"></script>
     <script src="matrix.js"></script>
     <script src="global_statistics.js"></script>
+    <script src="feature_attributes.js"></script>
+    <script src="explained_text.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="trip.min.css">
 </head>

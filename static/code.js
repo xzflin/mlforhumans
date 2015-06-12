@@ -23,6 +23,7 @@ var global_statistics;
 var classes;
 var explained_text;
 var feature_contributions;
+var brushed_features;
 
 function LoadJson() {
   var xhr = new XMLHttpRequest();
@@ -66,8 +67,10 @@ function LoadJson() {
         word_tooltip = new Tooltip("#hovercard", classes, 265, 17, 90, 5, 5, feature_attributes);
         global_statistics = new GlobalStatistics("#statistics_div", ".top_statistics", classes, top_part_height, 285, 17, 90, 5, max_docs);
         global_statistics.DrawStatistics("Validation", test_statistics, test_statistics.confusion_matrix);
-        explained_text = new ExplainedText("#explain_text_div", classes, f_attributes, selected_features, word_tooltip);
-        feature_contributions = new FeatureContributions("#explain_features_div", top_divs_width, 19, 80, 40, classes, f_attributes, selected_features, word_tooltip);
+        brushed_features = new BrushedFeatures("#feature_brush_div", f_attributes); 
+        explained_text = new ExplainedText("#explain_text_div", classes, f_attributes, brushed_features, word_tooltip);
+        feature_contributions = new FeatureContributions("#explain_features_div", top_divs_width, 19, 80, 40, classes, f_attributes, brushed_features, word_tooltip);
+        brushed_features.UpdateObjects(explained_text, feature_contributions);
 
         ReSetupDatabin();
         ChangeVisibility(d3.selectAll(".top_statistics"), false);
@@ -84,18 +87,6 @@ xhr.send();
 }
 
 LoadJson()
-
-function NotInTrain(feature) {
-  return typeof feature_attributes[feature] == 'undefined';
-}
-function FeatureColor(feature) {
-  if (NotInTrain(feature)) {
-    return "rgba(0, 0, 0, 0.35)";
-  }
-  else {
-    return "rgba(0, 0, 0, 0.85)";
-  }
-}
 
 function StartLoading(ms) {
   is_loading = true;
@@ -226,7 +217,6 @@ function RunRegex() {
           current_regex = {};
           // saved_regex = []
           // update_saved_regex()
-          FeatureBrushing(current_feature_brush, true)
           current = 0;
           set_doc_ids(train_docs);
           set_doc_ids(test_docs);
@@ -297,116 +287,6 @@ var explain_text_div = d3.select("#explain_text_div");
 var explain_features_div = d3.select("#explain_features_div");
 var height = "50%";
 
-function ToggleFeatureBrush(w) {
-  // OOV words are ignored
-  if (typeof feature_attributes[w.feature] == 'undefined') {
-    return;
-  }
-  if (selected_features.has(w.feature)) {
-    selected_features.delete(w.feature);
-  } 
-  else {
-    selected_features.add(w.feature);
-  }
-  sel_list = []
-  selected_features.forEach(function(d) {sel_list.push(d);})
-  FeatureBrushing(sel_list, false);
-}
-function ToggleFeatureBrushAndRedraw(ex, word) {
-  ToggleFeatureBrush(word);
-  explained_text.UpdateSelectedFeatures();
-  feature_contributions.UpdateSelectedFeatures();
-}
-
-function ShowWeights(ex) {
-  var data = ex.sorted_weights;
-  var n_bars = data.length;
-  var bar_height = 19;
-  var total_height = (bar_height + 10) * n_bars;
-  var x_offset = 80;
-  var right_x_offset = 40;
-  var xscale = d3.scale.linear()
-          .domain([0,1])
-          .range([0,top_divs_width-x_offset - right_x_offset]);
-
-  var yscale = d3.scale.linear()
-          .domain([0, n_bars])
-          .range([0,total_height]);
-
-  // TODO make this axis appropriate (stop using axis), make it clickable
-  // var yAxis = d3.svg.axis();
-  //     yAxis
-  //       .orient('left')
-  //       .scale(yscale)
-  //       .tickSize(2)
-  //       .tickFormat(function(d,i){ return i == 0 ? "" :  data[i - 1].feature })
-  //       .tickValues(d3.range(0,n_bars + 1));
-  var canvas;
-  var chart;
-  var y_xis;
-  var line;
-  if (explain_features_div.select("svg").empty()) {
-    canvas = explain_features_div.append("svg").attr({'width':'100%','height': (total_height + 10) + "px"});
-    chart = canvas.append('g')
-              .attr("transform", "translate(" + x_offset+ ",0)")
-              .attr('id','bars');
-    line = canvas.append("line").attr("x1", x_offset).attr("x2", x_offset).attr("y1", bar_height).style("stroke-width",2).style("stroke", "black");
-    // y_xis = canvas.append('g')
-    //           .attr("transform", "translate(80, 0)")
-    //           .attr('id','yaxis')
-    //           .call(yAxis);
-  }
-  else {
-  // This is a transition
-    canvas = explain_features_div.select("svg").attr('height', total_height + 10);
-    chart = canvas.select('#bars');
-    line = canvas.select("line");
-    // canvas.select("#yaxis").transition().duration(1000).call(yAxis);
-    //canvas.transition().delay(1000).each("end", function (){canvas.select("#yaxis").transition().duration(1000).call(yAxis)});
-    //return;
-    //y_xis = canvas.select("#yaxis").transition().delay(3000).call(yAxis);
-  }
-  line.transition().duration(1000).attr("y2", Math.max(bar_height, total_height - 10 + bar_height));
-  //line.transition().
-  labels = canvas.selectAll(".labels").data(data)
-  labels.enter().append('text')
-  labels.attr('x', x_offset - 2)
-        .attr('y', function(d, i) { return yscale(i) + bar_height + 14})
-        .attr('text-anchor', 'end')
-        .style("fill", function(d) {return FeatureColor(d.feature);})
-        .classed("labels", true)
-        .on("mouseover", function(d) { word_tooltip.ShowFeatureTooltip(d);})
-        .on("mouseout", function() {word_tooltip.HideFeatureTooltip();})
-        .on("click", function(d) {ToggleFeatureBrushAndRedraw(ex, d)})
-        .text(function(d) {return d.feature;});
-  labels.exit().remove();
-  bars = chart.selectAll('rect').data(data)
-  bars.enter().append('rect')
-  bars.on("mouseover", function(d) { word_tooltip.ShowFeatureTooltip(d);})
-      .on("mouseout", function() {word_tooltip.HideFeatureTooltip();})
-      .attr('height',bar_height)
-      .attr({'x':0,'y':function(d,i){ return yscale(i)+bar_height; }})
-      .attr('width', 0)
-      .style('fill',function(d,i){ return class_colors_i(d.class); })
-      .on("click", function(d) {ToggleFeatureBrushAndRedraw(ex, d)});
-  bars.transition().duration(1000)
-      .attr('width',function(d){ return xscale(d.weight); })
-      .style('fill',function(d,i){ return class_colors_i(d.class); })
-  bars.exit().transition().duration(1000).attr('width', 0).remove();
-  // TODO: make hover work on this maybe
-  var bartext = canvas.select("#bars").selectAll("text").data(data)
-  bartext.enter()
-         .append('text')
-         .attr({'x':function(d) {return xscale(d.weight) + 5; },'y':function(d,i){ return yscale(i)+35; }})
-  bartext.transition().duration(1000).
-    text(function (d) {return d.weight.toFixed(2);})
-    .attr({'x':function(d) {return xscale(d.weight) + 5; },'y':function(d,i){ return yscale(i)+35; }})
-  bartext.exit().transition().remove();
-  // Updating the textarea
-  current_text = _.map(ex.features, function(x) {return x.feature;}).join(" ")
-  d3.select("#textarea_explain").node().value = current_text;
-
-}
 function ShowFeedbackExample(ex) {
   from_regex = d3.select("#feedback_from").node().value;
   text = ex.features.join(" ");
@@ -712,7 +592,7 @@ function swap_dataset() {
   ShowFeedbackExample(current_docs[selected_document]);
   ShowDatabinForClass(-1);
   if (tab_mode === 'explain') {
-    FeatureBrushing(current_feature_brush, true);
+    brushed_features.UpdateBrushes(true);
   }
   else if (tab_mode === 'feedback') {
     BrushRegex(true);
@@ -896,47 +776,6 @@ function BrushExamples(example_set) {
 function InstantBrushExamples(example_set) {
   dots.style("opacity", function(d){
     return example_set.has(d.doc_id) ? 1 : 0.4;});
-}
-
-function update_brushed_features(feature_list) {
-  d3.select("#feature_brush_div").selectAll(".active_features").remove();
-  saved = d3.select("#feature_brush_div").selectAll(".active_features").data(feature_list)
-  zs = saved.enter().append("span")
-  zs.classed("active_features", true);
-  ps = zs.append("span");
-  ps.classed('active_text', true)
-    .html(function(d,i) { return '&nbsp;&nbsp;' +  d + '&nbsp;&nbsp;'})
-  xs = zs
-       .append("span")
-       .html("&#10799;<br />")
-       .on("click", function(d,i) {
-          var feature = Object()
-          feature.feature = current_feature_brush.splice(i, 1)[0];
-          ToggleFeatureBrushAndRedraw(current_object, feature);
-        });
-  xs.style("color", "red");
-  saved.exit().remove();
-}
-
-function FeatureBrushing(feature_list, instant) {
-  current_feature_brush = feature_list;
-  docs = [];
-  //d3.select("#feature_brush_div").html("Features being brushed: <br />" + feature_list.join("<br />"))
-  update_brushed_features(feature_list);
-  if (feature_list.length > 1) {
-    docs = _.intersection.apply(this, _.map(feature_list, function (d) {return current_train ? feature_attributes[d].train_docs : feature_attributes[d].test_docs;}));
-  } else {
-    if (feature_list.length != 0) {
-      docs = current_train ? feature_attributes[feature_list[0]].train_docs : feature_attributes[feature_list[0]].test_docs;
-    }
-  }
-  docs = new Set(_.map(docs, function(d) { return +d;}))
-  if (instant) {
-    InstantBrushExamples(docs);
-  }
-  else {
-    BrushExamples(docs);
-  }
 }
 
 var legend_height;

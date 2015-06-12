@@ -15,6 +15,7 @@
     <script src="feature_attributes.js"></script>
     <script src="explained_text.js"></script>
     <script src="feature_contributions.js"></script>
+    <script src="brushed_features.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="trip.min.css">
 </head>

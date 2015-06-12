@@ -1,6 +1,6 @@
 // Selected features is a set passed by reference. It will be modified by other
 // stuff. maybe I should change this in the future.
-var FeatureContributions = function (id, width, bar_height, x_offset, right_x_offset, classes, feature_attributes, selected_features, word_tooltip) {
+var FeatureContributions = function (id, width, bar_height, x_offset, right_x_offset, classes, feature_attributes, brushed_features, word_tooltip) {
   this.div = d3.select(id);
   this.svg = d3.select(id).append("svg").attr('width','100%');
   this.bars = this.svg.append('g')
@@ -14,7 +14,7 @@ var FeatureContributions = function (id, width, bar_height, x_offset, right_x_of
 
   this.classes = classes;
   this.feature_attributes = feature_attributes;
-  this.selected_features = selected_features;
+  this.brushed_features = brushed_features;
   this.word_tooltip = word_tooltip;
   this.xscale = d3.scale.linear()
           .domain([0,1])
@@ -43,14 +43,14 @@ FeatureContributions.prototype.ShowExample = function(example) {
         .classed("labels", true)
         .on("mouseover", function(d) {this_object.word_tooltip.ShowFeatureTooltip(d);})
         .on("mouseout", function() {this_object.word_tooltip.HideFeatureTooltip();})
-        .on("click", function(d) {ToggleFeatureBrushAndRedraw(example, d)})
+        .on("click", function(d) {this_object.brushed_features.ToggleFeatureBrush(d.feature)})
         .text(function(d) {return d.feature;});
   labels.exit().remove();
   var bars = this.bars.selectAll('rect').data(data)
   bars.enter().append('rect')
   bars.on("mouseover", function(d) {this_object.word_tooltip.ShowFeatureTooltip(d);})
       .on("mouseout", function() {this_object.word_tooltip.HideFeatureTooltip();})
-      .on("click", function(d) {ToggleFeatureBrushAndRedraw(example, d)})
+      .on("click", function(d) {this_object.brushed_features.ToggleFeatureBrush(d.feature)})
       .attr('height',this.bar_height)
       .attr({'x':0,'y':function(d,i){ return yscale(i)+ this_object.bar_height; }})
       .attr('width', 0)
@@ -75,6 +75,6 @@ FeatureContributions.prototype.ShowExample = function(example) {
 FeatureContributions.prototype.UpdateSelectedFeatures = function() {
   var this_object = this;
   this.svg.selectAll(".labels")
-    .style("text-decoration", function(d) { return this_object.selected_features.has(d.feature) ? "underline" : "none";});
+    .style("text-decoration", function(d) { return this_object.brushed_features.IsBrushed(d.feature) ? "underline" : "none";});
 }
 

@@ -6,8 +6,14 @@ var ExplainedText = function (id, classes, feature_attributes, brushed_features,
   this.feature_attributes = feature_attributes;
   this.brushed_features = brushed_features;
   this.word_tooltip = word_tooltip;
+  this.size = d3.scale.linear().domain([0, 1]).range([15, 40]);
 }
+ExplainedText.prototype.SetFeatureAttributes = function(feature_attributes) {
+  this.feature_attributes = feature_attributes;
+}
+
 ExplainedText.prototype.ShowExample = function(example) {
+  var this_object = this;
   var text = this.div.selectAll("span").data(example.features);
   text.enter().append("span");
   var this_object = this;
@@ -23,7 +29,7 @@ ExplainedText.prototype.ShowExample = function(example) {
           return this_object.feature_attributes.FeatureColor(d.feature);
         }
       })
-      .style("font-size", function(d,i) {return size(Math.abs(d.weight))+"px";})
+      .style("font-size", function(d,i) {return this_object.size(Math.abs(d.weight))+"px";})
       .style("text-decoration", function(d,i) { return this_object.brushed_features.IsBrushed(d.feature) ? "underline" : "none";})
       .on("mouseover", function(d) {this_object.word_tooltip.ShowFeatureTooltip(d);})
       .on("mouseout", function() {this_object.word_tooltip.HideFeatureTooltip();})

@@ -4,10 +4,18 @@ var BrushedFeatures = function (id, feature_attributes, databin) {
   this.selected_features = new Set();
   this.databin = databin;
   this.current_feature_list = []
+  this.current_train = false;
 }
 BrushedFeatures.prototype.UpdateObjects = function(explained_text, feature_contributions) {
   this.explained_text = explained_text;
   this.feature_contributions = feature_contributions;
+}
+BrushedFeatures.prototype.ChangeDataset = function(current_train) {
+  this.current_train = current_train;
+}
+
+BrushedFeatures.prototype.SetFeatureAttributes = function(feature_attributes) {
+  this.feature_attributes = feature_attributes;
 }
 BrushedFeatures.prototype.ToggleFeatureBrush = function(word) {
   if (!this.feature_attributes.InTrain(word)) {
@@ -35,10 +43,10 @@ BrushedFeatures.prototype.UpdateBrushes = function(instant) {
   this.feature_contributions.UpdateSelectedFeatures();
   var docs;
   if (this.current_feature_list.length > 1) {
-    docs = _.intersection.apply(this, _.map(this.current_feature_list, function (d) {return current_train ? feature_attributes[d].train_docs : feature_attributes[d].test_docs;}));
+    docs = _.intersection.apply(this, _.map(this.current_feature_list, function (d) {return this.current_train ? this.feature_attributes.Get(d).train_docs : this.feature_attributes.Get(d).test_docs;}));
   } else {
     if (this.current_feature_list.length != 0) {
-      docs = current_train ? feature_attributes[this.current_feature_list[0]].train_docs : feature_attributes[this.current_feature_list[0]].test_docs;
+      docs = this.current_train ? this.feature_attributes.Get(this.current_feature_list[0]).train_docs : this.feature_attributes.Get(this.current_feature_list[0]).test_docs;
     }
   }
   docs = new Set(_.map(docs, function(d) { return +d;}))

@@ -24,12 +24,16 @@ Tooltip.prototype.DrawSkeleton = function() {
   bottom_text.append("text").attr("x", 10).attr("y",  50).attr("fill", "black").text("Conditional distribution (train):");
 }
 
+Tooltip.prototype.SetFeatureAttributes = function(feature_attributes) {
+  this.feature_attributes = feature_attributes;
+}
+
 Tooltip.prototype.ShowFeatureTooltip = function(d) {
   // Assumes d has d.feature
   var freq;
   var prob;
   var undef = false;
-  if (typeof this.feature_attributes[d.feature] == 'undefined') {
+  if (!this.feature_attributes.InTrain(d.feature)) {
     undef = true;
     ChangeVisibility(this.svg.selectAll(".bars"), false)
     ChangeVisibility(this.svg.select(".bottom_text"), false)
@@ -38,8 +42,8 @@ Tooltip.prototype.ShowFeatureTooltip = function(d) {
     ChangeVisibility(this.svg.selectAll(".bars"), true)
     ChangeVisibility(this.svg.select(".bottom_text"), true)
 
-    freq = this.feature_attributes[d.feature]['train_freq'];
-    data = this.feature_attributes[d.feature]['train_distribution'];
+    freq = this.feature_attributes.Get(d.feature)['train_freq'];
+    data = this.feature_attributes.Get(d.feature)['train_distribution'];
   }
   this.svg.transition()
       .delay(1000)

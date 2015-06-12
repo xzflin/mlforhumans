@@ -4,7 +4,7 @@ var GlobalStatistics = function (id, class_name, classes, height, barchart_width
   // 80 is stuff on top, 20 TODO
   this.x_shift = class_name_width + 30;
   this.bar_yshift = 80;
-  total_height = (bar_height + space_between_bars) * class_names.length + 80 + 20;
+  total_height = (bar_height + space_between_bars) * classes.names.length + 80 + 20;
   this.stats_svg.attr("width", barchart_width)
            .attr("height", total_height)
            .attr("id", "stats_svg")

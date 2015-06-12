@@ -1,3 +1,10 @@
+// Function to move stuff to front. This is for the selected document.
+d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+    this.parentNode.appendChild(this);
+  });
+};
+
 var Databin = function (id, height, classes) {
   // Constants
   this.square_size = 6;
@@ -48,6 +55,9 @@ var Databin = function (id, height, classes) {
       .style("font-size", "14px")
       .style("opacity", 0.8)
 }
+Databin.prototype.AddFeedback = function(feedback) {
+  this.feedback = feedback;
+}
 Databin.prototype.NewDataset = function(train_docs, test_docs, train_statistics, test_statistics) {
   this.train_docs = train_docs;
   this.test_docs = test_docs;
@@ -57,6 +67,9 @@ Databin.prototype.NewDataset = function(train_docs, test_docs, train_statistics,
   this.ComputeMaxPerBin();
   this.AssignDots(this.test_docs);
   this.ShowForClass(this.current_order);
+}
+Databin.prototype.SelectedDocument = function() {
+  return this.selected_document;
 }
 Databin.prototype.ComputeMaxPerBin = function() {
    max_neg_bin = Math.ceil(Math.max((1 - this.train_statistics.accuracy) * this.train_docs.length, (1 - this.test_statistics.accuracy) * this.test_docs.length));
@@ -304,7 +317,7 @@ Databin.prototype.ShowForClass = function(focus_class) {
           this_object.selected_document = d.doc_id;
           // TODO
           GetPredictionAndShowExample(d.features, d.true_class);
-          ShowFeedbackExample(this_object.current_docs[d.doc_id]);
+          this_object.feedback.ShowExample(this_object.current_docs[d.doc_id]);
       });
 }
 
